@@ -13,7 +13,7 @@ Privata supports:
 - one row as one privacy unit
 - `COUNT_CATEGORY`, bounded `MEAN`, and `HISTOGRAM`
 - the Laplace mechanism
-- pure-\(\epsilon\) sequential composition
+- pure-$\epsilon$ sequential composition
 - per-session privacy-budget accounting
 - strict mode that never returns true answers
 - educational/demo mode for explicitly safe datasets
@@ -29,23 +29,23 @@ Privata supports:
 
 Two datasets are neighbors when they have the same number of rows and differ in at most one row.
 
-For a numeric field bounded to \([L,U]\) and dataset size \(n\):
+For a numeric field bounded to $[L,U]$ and dataset size $n$:
 
-- category-count sensitivity: \(1\)
-- bounded-mean sensitivity: \((U-L)/n\)
-- histogram vector \(L_1\) sensitivity: \(2\)
+- category-count sensitivity: $1$
+- bounded-mean sensitivity: $(U-L)/n$
+- histogram vector $L_1$ sensitivity: $2$
 
 The Laplace mechanism uses:
 
-\[
+$$
 b = \frac{\Delta f}{\epsilon}
-\]
+$$
 
 Sequential composition tracks:
 
-\[
+$$
 \epsilon_{\text{spent}} = \sum_i \epsilon_i
-\]
+$$
 
 A query is rejected before execution if it would exceed the remaining budget.
 
@@ -88,7 +88,7 @@ Do not add:
 - arbitrary SQL or predicates
 - filtered means
 - Gaussian mechanisms
-- \((\epsilon,\delta)\)-DP accounting
+- $(\epsilon,\delta)$-DP accounting
 - Rényi DP
 - DP-SGD
 - federated learning

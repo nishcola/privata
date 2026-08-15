@@ -32,9 +32,9 @@ The MVP assumes one person contributes exactly one row.
 
 Use **fixed-size replacement adjacency**.
 
-Datasets \(D\) and \(D'\) are adjacent if:
+Datasets $D$ and $D'$ are adjacent if:
 
-- \(|D| = |D'|\), and
+- $|D| = |D'|$, and
 - they differ in at most one row.
 
 ### Public configuration
@@ -53,43 +53,43 @@ Bounds must never be learned from private records.
 
 ### Clipping
 
-For numeric value \(x\) with bounds \([L,U]\):
+For numeric value $x$ with bounds $[L,U]$:
 
-\[
+$$
 \operatorname{clip}(x)=\min(U,\max(L,x))
-\]
+$$
 
 All numeric private queries operate on clipped values.
 
 ### Category count
 
-For declared public category \(c\):
+For declared public category $c$:
 
-\[
+$$
 f(D)=\sum_i \mathbf{1}[x_i=c]
-\]
+$$
 
 Sensitivity:
 
-\[
+$$
 \Delta f = 1
-\]
+$$
 
 A bare total-row count is intentionally excluded because dataset size is fixed/public in this MVP.
 
 ### Bounded mean
 
-For bounded numeric field \([L,U]\) and fixed dataset size \(n>0\):
+For bounded numeric field $[L,U]$ and fixed dataset size $n>0$:
 
-\[
+$$
 f(D)=\frac{1}{n}\sum_i \operatorname{clip}(x_i)
-\]
+$$
 
 Sensitivity:
 
-\[
+$$
 \Delta f=\frac{U-L}{n}
-\]
+$$
 
 ### Histogram
 
@@ -97,40 +97,40 @@ Each row contributes to exactly one public bin/category.
 
 Under replacement adjacency, one row replacement can decrement one bin and increment another, so:
 
-\[
+$$
 \Delta_1 f=2
-\]
+$$
 
-Each released bin receives independent Laplace noise using vector \(L_1\) sensitivity 2.
+Each released bin receives independent Laplace noise using vector $L_1$ sensitivity 2.
 
 Do not silently clamp negative noisy counts to zero in the core mechanism.
 
 ### Laplace mechanism
 
-For sensitivity \(\Delta f\) and \(\epsilon>0\):
+For sensitivity $\Delta f$ and $\epsilon>0$:
 
-\[
+$$
 b=\frac{\Delta f}{\epsilon}
-\]
+$$
 
 Release:
 
-\[
+$$
 M(D)=f(D)+\operatorname{Laplace}(0,b)
-\]
+$$
 
 Application sampling must use OS-backed randomness.
 
 ### Sequential composition
 
-\[
+$$
 \epsilon_{\text{spent}}=\sum_i\epsilon_i
-\]
+$$
 
-\[
+$$
 \epsilon_{\text{remaining}}=
 \epsilon_{\text{total}}-\epsilon_{\text{spent}}
-\]
+$$
 
 A query that would exceed the remaining budget must be rejected before execution.
 

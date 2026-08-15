@@ -53,27 +53,27 @@ Do not infer numeric bounds from private records.
 
 Under the MVP adjacency definition:
 
-- `COUNT_CATEGORY`: sensitivity \(1\)
-- bounded `MEAN`: sensitivity \((U-L)/n\)
-- `HISTOGRAM`: vector \(L_1\) sensitivity \(2\)
+- `COUNT_CATEGORY`: sensitivity $1$
+- bounded `MEAN`: sensitivity $(U-L)/n$
+- `HISTOGRAM`: vector $L_1$ sensitivity $2$
 
 Do not substitute formulas from a source using a different adjacency model.
 
 ### Mechanism
 
-The MVP uses pure \(\epsilon\)-DP with the Laplace mechanism:
+The MVP uses pure $\epsilon$-DP with the Laplace mechanism:
 
-\[
+$$
 \text{scale} = \frac{\Delta f}{\epsilon}
-\]
+$$
 
 ### Composition
 
 Use simple sequential composition:
 
-\[
+$$
 \epsilon_{\text{spent}} = \sum_i \epsilon_i
-\]
+$$
 
 Reject a query before execution if it would exceed the remaining budget.
 

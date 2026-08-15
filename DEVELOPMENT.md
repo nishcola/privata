@@ -187,7 +187,7 @@ Metrics:
 - RMSE
 - median absolute error
 - empirical bias
-- histogram mean \(L_1\) error
+- histogram mean $L_1$ error
 - histogram mean per-bin absolute error
 
 Expected qualitative result:
@@ -223,11 +223,11 @@ Default epsilon:
 
 Because:
 
-\[
+$$
 \Delta_{\text{mean}}=(U-L)/n
-\]
+$$
 
-the Laplace scale shrinks as \(n\) grows.
+the Laplace scale shrinks as $n$ grows.
 
 Report MAE and RMSE.
 
