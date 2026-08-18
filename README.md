@@ -56,6 +56,28 @@ A query is rejected before execution if it would exceed the remaining budget.
 - [`DEVELOPMENT.md`](DEVELOPMENT.md): testing, experiments, commands, and implementation workflow
 - [`AGENT_PROMPTS.md`](AGENT_PROMPTS.md): staged prompts for building the MVP
 
+## Reproducible experiments
+
+From the repository root, install the backend development dependencies in the
+active Python environment, then run the experiments with explicit mechanism
+seeds when a reproducible Monte Carlo result is needed:
+
+```bash
+cd backend
+python -m pip install -e ".[dev]"
+cd ..
+
+python experiments/privacy_utility.py --output-dir experiments/output --mechanism-seed 20260818
+python experiments/dataset_size.py --output-dir experiments/output --mechanism-seed 20260818
+python experiments/composition.py --output-dir experiments/output
+python experiments/neighboring_datasets.py --output-dir experiments/output --mechanism-seed 20260818
+```
+
+The default stochastic runs use 5,000 trials, except the neighboring-dataset
+experiment, which uses 10,000. Its distribution overlap is illustrative and
+does not prove differential privacy; the proof rests on the documented Laplace
+mechanism and sensitivity analysis.
+
 ## Intended stack
 
 Backend:
