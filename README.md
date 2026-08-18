@@ -49,6 +49,11 @@ $$
 
 A query is rejected before execution if it would exceed the remaining budget.
 
+Numeric histogram bins use `[lower, upper)` intervals, except that the final
+bin includes its upper edge. Each numeric histogram's public edges must cover
+the field's full declared numeric bounds, so every clipped record is assigned
+to exactly one bin.
+
 ## Repository docs
 
 - [`AGENTS.md`](AGENTS.md): coding-agent operating rules and non-negotiable invariants

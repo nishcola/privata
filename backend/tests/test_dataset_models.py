@@ -64,6 +64,14 @@ def test_numeric_field_accepts_equal_bounds() -> None:
     assert field.lower_bound == field.upper_bound == 4.0
 
 
+@pytest.mark.parametrize("edges", [(1.0, 120.0), (0.0, 119.0)])
+def test_numeric_histogram_edges_must_cover_declared_numeric_bounds(
+    edges: tuple[float, float],
+) -> None:
+    with pytest.raises(ValidationError):
+        numeric_field(histogram_bins=NumericHistogramBins(edges=edges))
+
+
 @pytest.mark.parametrize("invalid_bound", [True, "0"])
 def test_numeric_field_rejects_coercive_bounds(invalid_bound: object) -> None:
     with pytest.raises(ValidationError):

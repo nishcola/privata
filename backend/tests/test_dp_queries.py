@@ -3,6 +3,7 @@
 from importlib import import_module
 
 import pytest
+from pydantic import ValidationError
 
 from app.datasets.models import (
     CategoricalFieldSchema,
@@ -17,7 +18,7 @@ from app.dp.queries.models import (
     HistogramRequest,
     MeanRequest,
 )
-from app.errors import InvalidQueryError, PrivacyModelConfigurationError
+from app.errors import InvalidQueryError
 
 queries = import_module("app.dp.queries")
 def schema() -> DatasetSchema:
@@ -199,25 +200,14 @@ def test_numeric_histogram_rejects_field_without_public_bins() -> None:
         )
 
 
-def test_numeric_histogram_rejects_public_bins_that_do_not_cover_a_value() -> None:
-    execute = queries.execute_histogram
-    incomplete_schema = DatasetSchema(
-        fields=(
-            NumericFieldSchema(
-                name="value",
-                value_type=NumericValueType.FLOAT,
-                lower_bound=0.0,
-                upper_bound=10.0,
-                histogram_bins=NumericHistogramBins(edges=(0.0, 5.0)),
-            ),
-        )
-    )
-
-    with pytest.raises(PrivacyModelConfigurationError):
-        execute(
-            request=HistogramRequest(field="value", epsilon=1.0),
-            schema=incomplete_schema,
-            records=({"value": 10.0},),
+def test_numeric_histogram_rejects_public_bins_that_do_not_cover_bounds() -> None:
+    with pytest.raises(ValidationError, match="histogram edges must cover"):
+        NumericFieldSchema(
+            name="value",
+            value_type=NumericValueType.FLOAT,
+            lower_bound=0.0,
+            upper_bound=10.0,
+            histogram_bins=NumericHistogramBins(edges=(0.0, 5.0)),
         )
 
 

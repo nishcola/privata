@@ -59,6 +59,11 @@ class NumericFieldSchema(ContractModel):
     def validate_bounds(self) -> Self:
         if self.upper_bound < self.lower_bound:
             raise ValueError("upper bound must be greater than or equal to lower bound")
+        if self.histogram_bins is not None and (
+            self.histogram_bins.edges[0] > self.lower_bound
+            or self.histogram_bins.edges[-1] < self.upper_bound
+        ):
+            raise ValueError("histogram edges must cover the declared numeric bounds")
         return self
 
 
