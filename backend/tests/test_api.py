@@ -55,6 +55,7 @@ def request(
     path: str,
     *,
     payload: dict[str, object] | None = None,
+    headers: dict[str, str] | None = None,
     application: FastAPI | None = None,
 ) -> httpx.Response:
     async def request() -> httpx.Response:
@@ -62,13 +63,29 @@ def request(
         async with httpx.AsyncClient(
             transport=transport, base_url="http://testserver"
         ) as client:
-            return await client.request(method, path, json=payload)
+            return await client.request(method, path, json=payload, headers=headers)
 
     return asyncio.run(request())
 
 
 def get(path: str, *, application: FastAPI | None = None) -> httpx.Response:
     return request("GET", path, application=application)
+
+
+def test_vite_development_origin_can_preflight_api_requests() -> None:
+    response = request(
+        "OPTIONS",
+        "/sessions",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "POST" in response.headers["access-control-allow-methods"]
 
 
 def post(

@@ -101,6 +101,26 @@ Experiments:
 
 The core DP engine must remain independent from FastAPI, React, pandas, NumPy, and external differential-privacy libraries.
 
+## Frontend
+
+The standalone frontend is in `frontend/`. It uses the existing API as the
+source of truth for public schemas, query validation, privacy accounting, and
+release metadata.
+
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+
+It calls `http://127.0.0.1:8000` by default. Set `VITE_API_BASE_URL` to point
+at another API origin when needed. The frontend never calculates sensitivity
+or accepts/rejects a query budget locally. Demo ground truth is clearly
+identified as intentionally non-private when the API returns it.
+
+For local Vite development, the backend accepts browser requests from both
+`http://localhost:5173` and `http://127.0.0.1:5173`.
+
 ## Non-goals for the MVP
 
 Do not add:

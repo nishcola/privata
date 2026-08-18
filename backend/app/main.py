@@ -1,6 +1,7 @@
 """FastAPI application assembly for Privata."""
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.datasets import router as datasets_router
 from app.api.errors import domain_error_handler
@@ -20,6 +21,12 @@ def create_app() -> FastAPI:
     application.state.analysis_service = AnalysisService(
         dataset_registry=application.state.dataset_registry,
         session_store=application.state.session_store,
+    )
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=("http://localhost:5173", "http://127.0.0.1:5173"),
+        allow_methods=("GET", "POST"),
+        allow_headers=("Content-Type",),
     )
     application.add_exception_handler(DomainError, domain_error_handler)
     application.include_router(health_router)
