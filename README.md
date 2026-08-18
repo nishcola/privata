@@ -11,13 +11,13 @@ Privata uses fixed-size replacement adjacency. Datasets $D$ and $D'$ are neighbo
 Numeric values are clipped before a numeric query:
 
 $$
-\operatorname{clip}(x)=\min(U,\max(L,x))
+\mathrm{clip}(x)=\min(U,\max(L,x))
 $$
 
 The mechanism is pure $\epsilon$-DP Laplace noise:
 
 $$
-b=\frac{\Delta f}{\epsilon},\qquad M(D)=f(D)+\operatorname{Laplace}(0,b)
+b=\frac{\Delta f}{\epsilon},\qquad M(D)=f(D)+\mathrm{Laplace}(0,b)
 $$
 
 Application releases use OS-backed randomness. Tests and offline experiments may inject deterministic sampling; their seeds do not enter the application release path.
@@ -27,7 +27,7 @@ Application releases use OS-backed randomness. Tests and offline experiments may
 | Query | Public inputs | Statistic | Sensitivity under replacement adjacency |
 | --- | --- | --- | --- |
 | `COUNT_CATEGORY` | Declared field and category | $\sum_i \mathbf{1}[x_i=c]$ | $1$ |
-| `MEAN` | Numeric field with declared $[L,U]$ and fixed $n$ | $\frac{1}{n}\sum_i \operatorname{clip}(x_i)$ | $(U-L)/n$ |
+| `MEAN` | Numeric field with declared $[L,U]$ and fixed $n$ | $\frac{1}{n}\sum_i \mathrm{clip}(x_i)$ | $(U-L)/n$ |
 | `HISTOGRAM` | Field's declared public partition | One count per bin/category | vector $L_1$ sensitivity $2$ |
 
 A replacement can move one record from one histogram bin to another, changing two coordinates by one. Privata adds independent Laplace noise to each bin with scale $2/\epsilon$ and deliberately does not clamp negative noisy counts in the core mechanism. Numeric bins are `[lower, upper)`, except the final bin includes its upper edge; declared edges cover the full public numeric range. A bare row count is excluded because $n$ is fixed and public.

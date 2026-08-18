@@ -56,7 +56,7 @@ Bounds must never be learned from private records.
 For numeric value $x$ with bounds $[L,U]$:
 
 $$
-\operatorname{clip}(x)=\min(U,\max(L,x))
+\mathrm{clip}(x)=\min(U,\max(L,x))
 $$
 
 All numeric private queries operate on clipped values.
@@ -82,7 +82,7 @@ A bare total-row count is intentionally excluded because dataset size is fixed/p
 For bounded numeric field $[L,U]$ and fixed dataset size $n>0$:
 
 $$
-f(D)=\frac{1}{n}\sum_i \operatorname{clip}(x_i)
+f(D)=\frac{1}{n}\sum_i \mathrm{clip}(x_i)
 $$
 
 Sensitivity:
@@ -116,7 +116,7 @@ $$
 Release:
 
 $$
-M(D)=f(D)+\operatorname{Laplace}(0,b)
+M(D)=f(D)+\mathrm{Laplace}(0,b)
 $$
 
 Application sampling must use OS-backed randomness.
