@@ -56,7 +56,11 @@ class DatasetRegistry:
 
     def get_schema(self, dataset_id: str) -> DatasetSchema:
         """Return the public schema for a registered dataset."""
-        return self._get_dataset(dataset_id).metadata.dataset_schema
+        return self.get_metadata(dataset_id).dataset_schema
+
+    def get_metadata(self, dataset_id: str) -> DatasetMetadata:
+        """Return public metadata for one registered dataset."""
+        return self._get_dataset(dataset_id).metadata
 
     def get_records(self, dataset_id: str) -> tuple[DatasetRecord, ...]:
         """Return read-only records for trusted server-side callers only."""

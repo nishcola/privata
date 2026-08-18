@@ -3,6 +3,7 @@ from importlib import import_module
 
 import httpx
 import pytest
+from fastapi import FastAPI
 
 from app.main import create_app
 
@@ -49,15 +50,31 @@ EXPECTED_SCHEMA = {
 }
 
 
-def get(path: str) -> httpx.Response:
+def request(
+    method: str,
+    path: str,
+    *,
+    payload: dict[str, object] | None = None,
+    application: FastAPI | None = None,
+) -> httpx.Response:
     async def request() -> httpx.Response:
-        transport = httpx.ASGITransport(app=create_app())
+        transport = httpx.ASGITransport(app=application or create_app())
         async with httpx.AsyncClient(
             transport=transport, base_url="http://testserver"
         ) as client:
-            return await client.get(path)
+            return await client.request(method, path, json=payload)
 
     return asyncio.run(request())
+
+
+def get(path: str, *, application: FastAPI | None = None) -> httpx.Response:
+    return request("GET", path, application=application)
+
+
+def post(
+    path: str, payload: dict[str, object], *, application: FastAPI | None = None
+) -> httpx.Response:
+    return request("POST", path, payload=payload, application=application)
 
 
 def test_main_module_exposes_application_factory() -> None:
@@ -74,13 +91,17 @@ def test_health_returns_typed_ok_response() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_phase_two_exposes_only_health_and_public_dataset_routes() -> None:
+def test_phase_six_exposes_only_authorized_routes() -> None:
     application_paths = set(create_app().openapi()["paths"])
 
     assert application_paths == {
         "/health",
         "/datasets",
         "/datasets/{dataset_id}/schema",
+        "/sessions",
+        "/sessions/{session_id}",
+        "/sessions/{session_id}/queries",
+        "/sessions/{session_id}/history",
     }
 
 
@@ -119,6 +140,177 @@ def test_unknown_dataset_returns_structured_not_found_error() -> None:
             "details": {"dataset_id": "missing"},
         }
     }
+
+
+def create_session(
+    application: FastAPI, *, epsilon_total: float, strict_mode: bool
+) -> dict[str, object]:
+    response = post(
+        "/sessions",
+        {
+            "dataset_id": "synthetic-workforce",
+            "epsilon_total": epsilon_total,
+            "strict_mode": strict_mode,
+        },
+        application=application,
+    )
+
+    assert response.status_code == 200
+    return response.json()
+
+
+def test_create_and_get_session_return_public_accounting_state() -> None:
+    application = create_app()
+    created = create_session(application, epsilon_total=1.5, strict_mode=True)
+
+    response = get(f"/sessions/{created['session_id']}", application=application)
+
+    assert created == response.json() == {
+        "session_id": created["session_id"],
+        "dataset_id": "synthetic-workforce",
+        "epsilon_total": 1.5,
+        "epsilon_spent": 0.0,
+        "epsilon_remaining": 1.5,
+        "strict_mode": True,
+    }
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        {
+            "query_type": "COUNT_CATEGORY",
+            "field": "department",
+            "category": "Engineering",
+            "epsilon": 0.5,
+        },
+        {"query_type": "MEAN", "field": "age", "epsilon": 0.5},
+        {"query_type": "HISTOGRAM", "field": "department", "epsilon": 0.5},
+    ),
+)
+def test_strict_query_responses_expose_all_release_metadata_without_truth(
+    payload: dict[str, object],
+) -> None:
+    application = create_app()
+    session = create_session(application, epsilon_total=1.0, strict_mode=True)
+
+    response = post(
+        f"/sessions/{session['session_id']}/queries", payload, application=application
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert {
+        "query_id",
+        "query_type",
+        "dataset_id",
+        "epsilon_charged",
+        "epsilon_remaining",
+        "sensitivity",
+        "mechanism_name",
+        "mechanism_scale",
+        "timestamp",
+        "noisy_result",
+    } <= set(body)
+    assert "true_result" not in body
+    assert "true_result_is_demo" not in body
+
+    history = get(f"/sessions/{session['session_id']}/history", application=application)
+    assert history.status_code == 200
+    assert "true_result" not in history.text
+
+
+def test_safe_demo_session_labels_true_result_as_demo() -> None:
+    application = create_app()
+    session = create_session(application, epsilon_total=1.0, strict_mode=False)
+
+    response = post(
+        f"/sessions/{session['session_id']}/queries",
+        {
+            "query_type": "COUNT_CATEGORY",
+            "field": "department",
+            "category": "Engineering",
+            "epsilon": 0.5,
+        },
+        application=application,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["true_result_is_demo"] is True
+    assert "true_result" in response.json()
+
+
+def test_invalid_and_over_budget_queries_do_not_charge_via_http() -> None:
+    application = create_app()
+    session = create_session(application, epsilon_total=0.5, strict_mode=True)
+    session_id = session["session_id"]
+
+    invalid = post(
+        f"/sessions/{session_id}/queries",
+        {"query_type": "MEAN", "field": "department", "epsilon": 0.25},
+        application=application,
+    )
+    over_budget = post(
+        f"/sessions/{session_id}/queries",
+        {"query_type": "MEAN", "field": "age", "epsilon": 0.75},
+        application=application,
+    )
+    current = get(f"/sessions/{session_id}", application=application)
+
+    assert invalid.status_code == 400
+    assert invalid.json()["error"]["code"] == "INVALID_QUERY"
+    assert over_budget.status_code == 409
+    assert over_budget.json()["error"]["code"] == "BUDGET_EXCEEDED"
+    assert current.json()["epsilon_spent"] == 0.0
+    assert get(f"/sessions/{session_id}/history", application=application).json() == []
+
+
+def test_malformed_query_body_does_not_charge_via_http() -> None:
+    application = create_app()
+    session = create_session(application, epsilon_total=0.5, strict_mode=True)
+    session_id = session["session_id"]
+
+    response = post(
+        f"/sessions/{session_id}/queries",
+        {"query_type": "MEAN", "field": "age", "epsilon": 0.0},
+        application=application,
+    )
+
+    assert response.status_code == 422
+    assert get(f"/sessions/{session_id}", application=application).json()[
+        "epsilon_spent"
+    ] == 0.0
+    assert get(f"/sessions/{session_id}/history", application=application).json() == []
+
+
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/sessions/missing",
+        "/sessions/missing/history",
+    ),
+)
+def test_unknown_session_returns_structured_not_found_error(path: str) -> None:
+    response = get(path)
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {
+            "code": "UNKNOWN_SESSION",
+            "message": "Session was not found.",
+            "details": {"session_id": "missing"},
+        }
+    }
+
+
+def test_unknown_dataset_is_rejected_when_creating_session() -> None:
+    response = post(
+        "/sessions",
+        {"dataset_id": "missing", "epsilon_total": 1.0, "strict_mode": True},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "UNKNOWN_DATASET"
 
 
 @pytest.mark.parametrize(

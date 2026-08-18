@@ -17,6 +17,7 @@ from app.dp.queries.models import (
     CountCategoryRequest,
     HistogramRequest,
     MeanRequest,
+    QueryRequest,
 )
 from app.dp.sensitivity import (
     count_category_sensitivity,
@@ -48,6 +49,30 @@ class HistogramQueryResult:
     scale: float
 
 
+def validate_query_request(*, request: QueryRequest, schema: DatasetSchema) -> None:
+    """Validate a typed query against public schema without releasing data."""
+    if isinstance(request, CountCategoryRequest):
+        field = _categorical_field(schema, request.field)
+        if request.category not in field.categories:
+            raise InvalidQueryError(
+                "Category is not declared for the field.",
+                details={"field": request.field, "category": request.category},
+            )
+        return
+    if isinstance(request, MeanRequest):
+        _numeric_field(schema, request.field)
+        return
+    if isinstance(request, HistogramRequest):
+        field = _field(schema, request.field)
+        if isinstance(field, NumericFieldSchema) and field.histogram_bins is None:
+            raise InvalidQueryError(
+                "Numeric histogram requires declared public bin edges.",
+                details={"field": request.field},
+            )
+        return
+    raise TypeError("request must be a supported QueryRequest")
+
+
 def execute_count_category(
     *,
     request: CountCategoryRequest,
@@ -56,12 +81,8 @@ def execute_count_category(
     uniform_sampler: UniformSampler | None = None,
 ) -> ScalarQueryResult:
     """Release a noisy count for one declared categorical value."""
+    validate_query_request(request=request, schema=schema)
     field = _categorical_field(schema, request.field)
-    if request.category not in field.categories:
-        raise InvalidQueryError(
-            "Category is not declared for the field.",
-            details={"field": request.field, "category": request.category},
-        )
 
     true_result = sum(record[field.name] == request.category for record in records)
     sensitivity = count_category_sensitivity()
@@ -89,6 +110,7 @@ def execute_mean(
     uniform_sampler: UniformSampler | None = None,
 ) -> ScalarQueryResult:
     """Release a noisy bounded mean after clipping every numeric value."""
+    validate_query_request(request=request, schema=schema)
     field = _numeric_field(schema, request.field)
     n = len(records)
     sensitivity = mean_sensitivity(
@@ -128,6 +150,7 @@ def execute_histogram(
     uniform_sampler: UniformSampler | None = None,
 ) -> HistogramQueryResult:
     """Release independently noised counts across a declared public partition."""
+    validate_query_request(request=request, schema=schema)
     field = _field(schema, request.field)
     if isinstance(field, CategoricalFieldSchema):
         true_result = _categorical_histogram(field, records)

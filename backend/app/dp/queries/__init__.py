@@ -8,6 +8,7 @@ __all__ = [
     "execute_count_category",
     "execute_histogram",
     "execute_mean",
+    "validate_query_request",
 ]
 
 _EXECUTION_EXPORTS = frozenset(__all__)

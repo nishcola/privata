@@ -242,3 +242,30 @@ def test_histogram_samples_each_bin_and_preserves_negative_counts() -> None:
     assert result.true_result == (0, 1, 0)
     assert result.noisy_result[0] < 0.0
     assert result.scale == 2.0
+
+
+@pytest.mark.parametrize(
+    "query_request",
+    (
+        CountCategoryRequest(field="value", category="a", epsilon=1.0),
+        CountCategoryRequest(field="group", category="missing", epsilon=1.0),
+        MeanRequest(field="group", epsilon=1.0),
+        HistogramRequest(field="unbinned", epsilon=1.0),
+    ),
+)
+def test_schema_validation_rejects_invalid_requests_before_execution(
+    query_request: CountCategoryRequest | MeanRequest | HistogramRequest,
+) -> None:
+    with pytest.raises(InvalidQueryError):
+        queries.validate_query_request(request=query_request, schema=schema())
+
+
+def test_schema_validation_accepts_each_supported_query_type() -> None:
+    query_requests = (
+        CountCategoryRequest(field="group", category="a", epsilon=1.0),
+        MeanRequest(field="value", epsilon=1.0),
+        HistogramRequest(field="group", epsilon=1.0),
+    )
+
+    for request in query_requests:
+        queries.validate_query_request(request=request, schema=schema())
