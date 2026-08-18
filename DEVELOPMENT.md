@@ -65,7 +65,7 @@ Reject:
 - upper bound below lower bound
 - malformed or unordered histogram edges
 
-Use a small documented floating-point tolerance in privacy-budget comparisons so floating-point accumulation does not produce meaningless negative remaining epsilon.
+Use a documented floating-point tolerance of `1e-12` in privacy-budget comparisons so floating-point accumulation does not produce meaningless negative remaining epsilon.
 
 ## Test strategy
 
