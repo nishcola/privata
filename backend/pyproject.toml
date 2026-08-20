@@ -18,8 +18,10 @@ dev = [
     "matplotlib>=3.10,<4",
     "numpy>=2.3,<3",
     "opendp>=0.15.1,<0.16",
+    "opacus>=1.5,<2",
     "pytest>=9.1,<10",
     "ruff>=0.16,<1",
+    "torch>=2.6,<3",
 ]
 
 [tool.setuptools.packages.find]

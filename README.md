@@ -104,9 +104,32 @@ From the repository root, after the backend editable install, run:
 .\backend\.venv\Scripts\python.exe experiments\dataset_size.py --output-dir experiments\output --mechanism-seed 20260818
 .\backend\.venv\Scripts\python.exe experiments\composition.py --output-dir experiments\output
 .\backend\.venv\Scripts\python.exe experiments\neighboring_datasets.py --output-dir experiments\output --mechanism-seed 20260818
+.\backend\.venv\Scripts\python.exe experiments\dpsgd_classification.py --output-dir experiments\output
 ```
 
-Each script imports the same DP query or accounting code as the application. It writes a compact JSON summary and PNG plot to `experiments/output/`. The two seeded Monte Carlo scripts default to 5,000 trials per configuration; the neighboring-dataset script defaults to 10,000 trials per dataset and epsilon.
+The four query experiments import the application DP query or accounting code. Every experiment writes a compact JSON summary and PNG plot to `experiments/output/`. The two seeded Monte Carlo scripts default to 5,000 trials per configuration; the neighboring-dataset script defaults to 10,000 trials per dataset and epsilon.
+
+### DP-SGD classification experiment
+
+`dpsgd_classification.py` is an offline research experiment using PyTorch and
+Opacus. It trains logistic regression on a deterministic 10,000-row synthetic
+retention dataset generated from seed `20260819`; no real-person or imported
+records are used. The first 8,000 records train the model and the remaining
+2,000 records evaluate it. Feature scaling uses only the declared numeric
+bounds and category domain, never data-derived normalization.
+
+This is a separate privacy model from Privata's query system. The training
+privacy unit is one complete record, with **sample-level add/remove
+adjacency**. Per-sample gradients use flat L2 clipping at `1.0`, Gaussian
+noise, Poisson sampling at `256 / 8000`, and Opacus's PRV accountant. It
+reports `(epsilon, delta)` with `delta = 1e-5` for target epsilon values `0.5`,
+`1`, `2`, `4`, and `8`; the artifact records the resolved noise multiplier and
+actual epsilon for each five-seed configuration.
+
+Those `(epsilon, delta)` results cannot be added to or charged against the
+MVP's pure-epsilon, fixed-size replacement Laplace query sessions. The script
+uses fixed CPU seeds and `secure_mode=False` for reproducibility, so it is an
+educational research artifact, not a cryptographically hardened deployment.
 
 ### Findings from the recorded Phase 10 run
 
@@ -125,7 +148,12 @@ The neighboring-distribution plot is an illustration of sampled outputs, not a p
 
 Privata demonstrates record-level DP only for these three aggregates and only under its stated public metadata and one-row-per-person assumption. It does not protect against malicious server operators, compromised hosts, side channels, multi-row contributions by one person, linkage attacks outside the DP release model, or disclosure through public schema, bounds, bins, or dataset size.
 
-Privata also does not provide access control, encrypted storage, secure deletion, network security, distributed privacy accounting, add/remove adjacency, arbitrary filters or SQL, Gaussian mechanisms, or advanced accountants. Sessions are in-memory. There is no HTTP route for raw dataset records.
+The MVP query service does not provide access control, encrypted storage,
+secure deletion, network security, distributed privacy accounting, add/remove
+adjacency, Gaussian query mechanisms, or advanced query accountants. The
+offline DP-SGD experiment above is an explicitly separate research model, not
+a session feature. Sessions are in-memory. There is no HTTP route for raw
+dataset records.
 
 ## Engineering choices
 
