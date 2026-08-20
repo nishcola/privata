@@ -322,6 +322,11 @@ Imports the same DP engine.
 
 It may access synthetic true values because experiments are offline and educational.
 
+The offline `dpsgd_classification.py` research experiment is the explicit
+exception: it uses PyTorch and Opacus rather than the query engine, with a
+separate privacy model documented in the README. It must not add an API route,
+enter `backend/app/dp`, or share accounting with privacy sessions.
+
 ### Frontend
 
 Consumes backend responses as source of truth.
@@ -475,7 +480,7 @@ The MVP is complete when:
 11. README explains privacy assumptions and limitations
 12. no raw-data HTTP route exists
 
-## Explicitly deferred
+## Deferred from the MVP query service
 
 - add/remove adjacency
 - arbitrary filters
@@ -486,7 +491,12 @@ The MVP is complete when:
 - advanced composition
 - Rényi DP
 - privacy amplification
-- DP-SGD
 - federated learning
 - authentication
 - remote sensitive-data storage
+
+The offline DP-SGD research experiment is explicitly permitted as a separate
+model. It uses sample-level add/remove adjacency, Gaussian DP-SGD, Poisson
+sampling, PRV accounting, and `(epsilon, delta)` reporting. None of those
+properties changes the MVP query service, its fixed-size replacement adjacency,
+its Laplace mechanism, or its pure-epsilon session accountant.

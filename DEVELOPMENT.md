@@ -138,7 +138,10 @@ NumPy and Matplotlib belong in experiment/dev dependencies, not the core DP engi
 
 # Experiments
 
-All experiments must import the same DP engine used by the backend.
+Query experiments must import the same DP engine used by the backend. The
+offline `dpsgd_classification.py` experiment is the explicit exception: it uses
+PyTorch and Opacus for its separate DP-SGD training model and must never import
+those libraries into `backend/app/dp`.
 
 Synthetic data generation must use explicit recorded seeds.
 
