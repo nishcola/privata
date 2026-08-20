@@ -12,7 +12,8 @@ import {
   type NumericField,
   type Session,
 } from "./api";
-import Navigation, { type Page } from "./Navigation";
+import { formatEpsilon } from "./formatters";
+import { BudgetSummary } from "./AppShell";
 
 function fieldsForQuery(dataset: Dataset, queryType: QueryType) {
   if (queryType === "COUNT_CATEGORY") {
@@ -33,11 +34,11 @@ function fieldsForQuery(dataset: Dataset, queryType: QueryType) {
 export default function QueryConsole({
   dataset,
   session,
-  onNavigate,
+  onSessionUpdate,
 }: {
   dataset: Dataset;
   session: Session;
-  onNavigate: (page: Page) => void;
+  onSessionUpdate?: (session: Session) => void;
 }) {
   const [queryType, setQueryType] = useState<QueryType>("COUNT_CATEGORY");
   const validFields = fieldsForQuery(dataset, queryType);
@@ -59,6 +60,7 @@ export default function QueryConsole({
     ]);
     setCurrentSession(updatedSession);
     setHistory(updatedHistory);
+    onSessionUpdate?.(updatedSession);
   }
 
   function selectQueryType(nextQueryType: QueryType) {
@@ -97,27 +99,17 @@ export default function QueryConsole({
   }
 
   return (
-    <main className="app-shell">
-      <Navigation activePage="query" canUseQuery onNavigate={onNavigate} />
+    <>
       <header>
         <p className="eyebrow">Privata</p>
         <h1>Query console</h1>
         <p>Server-reported privacy accounting for this session.</p>
       </header>
-      <dl className="budget-summary">
-        <div>
-          <dt>Total epsilon</dt>
-          <dd>{currentSession.epsilon_total}</dd>
-        </div>
-        <div>
-          <dt>Spent epsilon</dt>
-          <dd>{currentSession.epsilon_spent}</dd>
-        </div>
-        <div>
-          <dt>Remaining epsilon</dt>
-          <dd>{currentSession.epsilon_remaining}</dd>
-        </div>
-      </dl>
+      <BudgetSummary
+        epsilonTotal={currentSession.epsilon_total}
+        epsilonSpent={currentSession.epsilon_spent}
+        epsilonRemaining={currentSession.epsilon_remaining}
+      />
       <p className="mode-status">
         {currentSession.strict_mode
           ? "Mode: strict. Ground truth is never returned."
@@ -228,8 +220,8 @@ export default function QueryConsole({
                 {history.map((entry) => (
                   <tr key={entry.query_id}>
                     <td>{entry.query_type}</td>
-                    <td>{entry.epsilon_charged}</td>
-                    <td>{entry.epsilon_remaining}</td>
+                  <td>{formatEpsilon(entry.epsilon_charged)}</td>
+                  <td>{formatEpsilon(entry.epsilon_remaining)}</td>
                     <td>{entry.timestamp}</td>
                   </tr>
                 ))}
@@ -238,7 +230,7 @@ export default function QueryConsole({
           </div>
         )}
       </section>
-    </main>
+    </>
   );
 }
 
