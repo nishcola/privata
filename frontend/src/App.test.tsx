@@ -7,9 +7,84 @@ import QueryConsole from "./QueryConsole";
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.history.replaceState({}, "", "/");
 });
 
 describe("Privata frontend", () => {
+  it("shows the overview with persistent primary navigation", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            dataset_id: "synthetic-workforce",
+            name: "Synthetic Workforce",
+            row_count: 500,
+            safe_for_demo: true,
+            schema: { fields: [] },
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Overview" })).toBeInTheDocument();
+    const navigation = screen.getByRole("navigation", { name: "Primary navigation" });
+    expect(navigation).toHaveTextContent("Overview");
+    expect(navigation).toHaveTextContent("Datasets");
+    expect(navigation).toHaveTextContent("Sessions");
+    expect(navigation).toHaveTextContent("Experiments");
+    expect(navigation).toHaveTextContent("About Privacy");
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/");
+    expect(screen.getByText("No analysis sessions have been created in this tab.")).toBeInTheDocument();
+  });
+
+  it("updates the active navigation state after a browser history event", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify([]), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "Overview" });
+    window.history.pushState({}, "", "/about-privacy");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(await screen.findByRole("heading", { name: "About Privacy" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "About Privacy" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("retries a failed overview dataset load", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              dataset_id: "synthetic-workforce",
+              name: "Synthetic Workforce",
+              row_count: 500,
+              safe_for_demo: true,
+              schema: { fields: [] },
+            },
+          ]),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+
+    render(<App />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load public dataset metadata.");
+    await user.click(screen.getByRole("button", { name: "Retry loading datasets" }));
+
+    expect(await screen.findByText("Synthetic Workforce")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("renders public dataset metadata after discovery", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
@@ -42,12 +117,11 @@ describe("Privata frontend", () => {
       ),
     );
     vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
 
     render(<App />);
-
-    expect(
-      await screen.findByRole("heading", { name: "Set up a privacy session" }),
-    ).toBeInTheDocument();
+    await user.click(await screen.findByRole("link", { name: "Datasets" }));
+    expect(await screen.findByRole("heading", { name: "Datasets" })).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Synthetic Workforce" }),
     ).toBeInTheDocument();
@@ -62,6 +136,55 @@ describe("Privata frontend", () => {
     expect(screen.getByText("2 public bins")).toBeInTheDocument();
     expect(screen.getByText("Show public bin edges")).toBeInTheDocument();
     expect(screen.getByText("18, 40, 80")).toBeInTheDocument();
+  });
+
+  it("preselects a dataset when its catalog action opens Sessions", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            dataset_id: "synthetic-workforce",
+            name: "Synthetic Workforce",
+            row_count: 500,
+            safe_for_demo: true,
+            schema: { fields: [] },
+          },
+          {
+            dataset_id: "synthetic-health",
+            name: "Synthetic Health",
+            row_count: 240,
+            safe_for_demo: false,
+            schema: { fields: [] },
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(await screen.findByRole("link", { name: "Datasets" }));
+    await user.click(screen.getAllByRole("button", { name: "Create a session for this dataset" })[1]!);
+
+    expect(await screen.findByRole("heading", { name: "Sessions" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Dataset")).toHaveValue("synthetic-health");
+  });
+
+  it("explains when a direct session route is unavailable in this tab", async () => {
+    window.history.replaceState({}, "", "/sessions/not-in-this-tab");
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify([]), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Session unavailable" })).toBeInTheDocument();
+    expect(screen.getByText("Sessions are held only for this tab. Create a new session to begin an analysis.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Create a session" }));
+    expect(await screen.findByRole("heading", { name: "Sessions" })).toBeInTheDocument();
   });
 
   it("creates a demo session before opening the query console", async () => {
@@ -120,6 +243,7 @@ describe("Privata frontend", () => {
     const user = userEvent.setup();
 
     render(<App />);
+    await user.click(await screen.findByRole("link", { name: "Sessions" }));
     await screen.findByRole("heading", { name: "Set up a privacy session" });
 
     await user.clear(screen.getByLabelText("Total epsilon"));
@@ -198,6 +322,7 @@ describe("Privata frontend", () => {
     const user = userEvent.setup();
 
     render(<App />);
+    await user.click(await screen.findByRole("link", { name: "Sessions" }));
     await screen.findByRole("heading", { name: "Set up a privacy session" });
     await user.click(screen.getByLabelText("Demo mode"));
     await user.click(screen.getByRole("button", { name: "Create session" }));
@@ -296,6 +421,7 @@ describe("Privata frontend", () => {
     const user = userEvent.setup();
 
     render(<App />);
+    await user.click(await screen.findByRole("link", { name: "Sessions" }));
     await screen.findByRole("heading", { name: "Set up a privacy session" });
     await user.click(screen.getByLabelText("Demo mode"));
     await user.click(screen.getByRole("button", { name: "Create session" }));
@@ -331,6 +457,9 @@ describe("Privata frontend", () => {
     expect(historyTable).toHaveTextContent("COUNT_CATEGORY");
     expect(historyTable).toHaveTextContent("0.1");
     expect(historyTable).toHaveTextContent("1.9");
+    await user.click(screen.getByRole("link", { name: "Overview" }));
+    expect(await screen.findByText("Active session for synthetic-workforce")).toBeInTheDocument();
+    expect(screen.getByText("Remaining epsilon").parentElement).toHaveTextContent("1.9");
   });
 
   it("explains all four reference experiment categories", async () => {
@@ -352,8 +481,7 @@ describe("Privata frontend", () => {
     const user = userEvent.setup();
 
     render(<App />);
-    await screen.findByRole("button", { name: "Experiments" });
-    await user.click(screen.getByRole("button", { name: "Experiments" }));
+    await user.click(await screen.findByRole("link", { name: "Experiments" }));
 
     expect(
       screen.getByRole("heading", { name: "Reference experiments" }),
@@ -408,7 +536,6 @@ describe("Privata frontend", () => {
           epsilon_remaining: 2,
           strict_mode: true,
         }}
-        onNavigate={vi.fn()}
       />,
     );
 
@@ -485,7 +612,6 @@ describe("Privata frontend", () => {
           epsilon_remaining: 2,
           strict_mode: true,
         }}
-        onNavigate={vi.fn()}
       />,
     );
 
