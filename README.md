@@ -133,7 +133,3 @@ Privata also does not provide access control, encrypted storage, secure deletion
 - The built-in 500-row workforce dataset is deterministic and synthetic, with public bounds, categories, and histogram edges. Its `safe_for_demo` marker gates demo-only truth disclosure.
 - Query execution is serialized by the analysis service. Validation, budget rejection, and mechanism failures leave the accountant unchanged; successful releases are charged and appended to safe history once.
 - API discovery exposes public dataset metadata and schemas only. Strict-mode history stores query type, charged epsilon, remaining epsilon, timestamp, and query identifier, not true answers or records.
-
-## Demo
-
-Follow the 2-4 minute flow in [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
